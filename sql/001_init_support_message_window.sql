@@ -6,7 +6,7 @@
 --   sudo -u postgres psql -v ON_ERROR_STOP=1 -f sql/001_init_support_message_window.sql
 -- This is a first-run bootstrap script, not an idempotent migration.
 
-CREATE ROLE support_message_window WITH LOGIN PASSWORD 'REPLACE_WITH_STRONG_PASSWORD';
+CREATE ROLE support_message_window WITH LOGIN PASSWORD 'replace_with_strong_password';
 
 CREATE DATABASE support_message_window_db OWNER postgres;
 
@@ -34,6 +34,13 @@ CREATE INDEX idx_agent_messages_agent_time
 
 GRANT SELECT, INSERT ON agents, agent_messages TO support_message_window;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO support_message_window;
+
+-- SELECT FOR UPDATE requires UPDATE privilege on the locked column.
+-- Grant only agent_id, not UPDATE permission on the entire agents table.
+-- This allows pessimistic row locking for atomic message insertion.
+GRANT UPDATE (agent_id)
+ON TABLE agents
+TO support_message_window;
 
 GRANT SELECT ON agents, agent_messages TO db_admin;
 

@@ -1,3 +1,4 @@
+package memory;
 
 import domain.AgentMessage;
 import domain.MessageLimitExceededException;
@@ -25,7 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
-public class MessageWindowServiceConcurrencyTest {
+public class InMemoryMessageWindowServiceConcurrencyTest {
 
     private static final int MESSAGE_LIMIT = 5;
     private static final int THREAD_POOL_SIZE = 16;
