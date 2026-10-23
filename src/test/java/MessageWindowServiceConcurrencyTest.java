@@ -1,10 +1,11 @@
+
 import domain.AgentMessage;
 import domain.MessageLimitExceededException;
+import org.junit.jupiter.api.Test;
 import service.MessageWindowService;
 import service.MessageWindowServiceImpl;
+import store.memory.InMemoryMessageWindowStore;
 import store.memory.SlidingWindowCounter;
-
-import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -36,7 +37,9 @@ public class MessageWindowServiceConcurrencyTest {
         );
 
         return new MessageWindowServiceImpl(
-            new SlidingWindowCounter(),
+            new InMemoryMessageWindowStore(
+                new SlidingWindowCounter()
+            ),
             MESSAGE_LIMIT,
             clock
         );
@@ -113,7 +116,6 @@ public class MessageWindowServiceConcurrencyTest {
             rejected.put(agent, new AtomicInteger());
         }
 
-        // Build all 300 requests before submitting them.
         List<String> requests = new ArrayList<>();
 
         for (String agent : agents) {
@@ -122,7 +124,7 @@ public class MessageWindowServiceConcurrencyTest {
             }
         }
 
-        // Random submission order, reproducible with seed 42.
+        // Shuffle requests with a reproducible random seed.
         Collections.shuffle(requests, new Random(42));
 
         CountDownLatch startGate = new CountDownLatch(1);

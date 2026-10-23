@@ -1,10 +1,11 @@
+
 import domain.AgentMessage;
 import domain.MessageLimitExceededException;
+import org.junit.jupiter.api.Test;
 import service.MessageWindowService;
 import service.MessageWindowServiceImpl;
+import store.memory.InMemoryMessageWindowStore;
 import store.memory.SlidingWindowCounter;
-
-import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -24,7 +25,9 @@ public class MessageWindowServiceExpirationTest {
         );
 
         MessageWindowService service = new MessageWindowServiceImpl(
-            new SlidingWindowCounter(),
+            new InMemoryMessageWindowStore(
+                new SlidingWindowCounter()
+            ),
             5,
             clock
         );
@@ -48,7 +51,7 @@ public class MessageWindowServiceExpirationTest {
 
         assertFalse(service.canAddMessage(alice));
 
-        // 12:30 exactly — The cutoff is inclusive.
+        // 12:30 exactly — Cutoff is inclusive.
         clock.advance(Duration.ofMinutes(1));
 
         assertFalse(service.canAddMessage(alice));
@@ -58,7 +61,7 @@ public class MessageWindowServiceExpirationTest {
 
         assertTrue(service.canAddMessage(alice));
 
-        // addMessage() removes expired timestamps before inserting.
+        // Expired timestamps are removed before inserting.
         assertDoesNotThrow(
             () -> service.addMessage("Alice", "New message")
         );

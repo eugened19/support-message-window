@@ -1,28 +1,21 @@
+
 package service;
 
 import domain.AgentMessage;
 import domain.MessageLimitExceededException;
-import store.memory.SlidingWindowCounter;
+import store.MessageWindowStore;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class MessageWindowServiceImpl implements MessageWindowService {
 
-    private final Map<String, AgentWindow> windows =
-        new ConcurrentHashMap<>();
-
-    private final SlidingWindowCounter counter;
+    private final MessageWindowStore store;
     private final int messageLimit;
     private final Clock clock;
 
     public MessageWindowServiceImpl(
-        SlidingWindowCounter counter,
+        MessageWindowStore store,
         int messageLimit,
         Clock clock
     ) {
@@ -32,70 +25,35 @@ public class MessageWindowServiceImpl implements MessageWindowService {
             );
         }
 
-        this.counter = counter;
+        this.store = store;
         this.messageLimit = messageLimit;
         this.clock = clock;
     }
 
     @Override
     public boolean canAddMessage(AgentMessage agentMessage) {
-        AgentWindow window = windows.get(agentMessage.agent());
+        Instant now = clock.instant();
 
-        if (window == null) {
-            return true;
-        }
+        int count = store.countActiveMessages(
+            agentMessage.agent(),
+            now
+        );
 
-        window.lock.readLock().lock();
-
-        try {
-            Instant now = clock.instant();
-
-            int count = counter.count(
-                window.timestamps,
-                now
-            );
-
-            return count < messageLimit;
-
-        } finally {
-            window.lock.readLock().unlock();
-        }
+        return count < messageLimit;
     }
 
     @Override
     public void addMessage(String agent, String message) {
-        AgentWindow window = windows.computeIfAbsent(
+        Instant now = clock.instant();
+
+        boolean added = store.tryAddMessageWithinLimit(
             agent,
-            name -> new AgentWindow()
+            now,
+            messageLimit
         );
 
-        window.lock.writeLock().lock();
-
-        try {
-            Instant now = clock.instant();
-
-            int count = counter.countAndRemoveExpired(
-                window.timestamps,
-                now
-            );
-
-            if (count >= messageLimit) {
-                throw new MessageLimitExceededException(agent);
-            }
-
-            window.timestamps.addLast(now);
-
-        } finally {
-            window.lock.writeLock().unlock();
+        if (!added) {
+            throw new MessageLimitExceededException(agent);
         }
-    }
-
-    private static class AgentWindow {
-
-        private final Deque<Instant> timestamps =
-            new ArrayDeque<>();
-
-        private final ReentrantReadWriteLock lock =
-            new ReentrantReadWriteLock();
     }
 }
