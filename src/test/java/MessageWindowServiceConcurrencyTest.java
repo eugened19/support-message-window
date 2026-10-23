@@ -1,3 +1,8 @@
+import domain.AgentMessage;
+import domain.MessageLimitExceededException;
+import service.MessageWindowService;
+import service.MessageWindowServiceImpl;
+import store.memory.SlidingWindowCounter;
 
 import org.junit.jupiter.api.Test;
 

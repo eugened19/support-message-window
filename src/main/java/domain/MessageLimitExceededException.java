@@ -1,3 +1,5 @@
+package domain;
+
 public class MessageLimitExceededException extends RuntimeException {
 
     public MessageLimitExceededException(String agent) {
